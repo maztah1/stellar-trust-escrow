@@ -1,0 +1,125 @@
+/**
+ * Escrow Controller
+ *
+ * Handles HTTP requests for escrow-related routes.
+ * Reads from the PostgreSQL database (indexed from chain events).
+ * Write operations broadcast pre-signed transactions to Stellar.
+ */
+
+// TODO (contributor — easy): import Prisma client once schema is finalized
+// const { PrismaClient } = require('@prisma/client');
+// const prisma = new PrismaClient();
+
+/**
+ * GET /api/escrows
+ *
+ * Returns a paginated list of all escrows.
+ *
+ * @param {import('express').Request}  req
+ * @param {import('express').Response} res
+ *
+ * Query params:
+ *   - page     {number}  default 1
+ *   - limit    {number}  default 20, max 100
+ *   - status   {string}  filter by EscrowStatus (Active|Completed|Disputed|Cancelled)
+ *   - client   {string}  filter by client Stellar address
+ *   - freelancer {string} filter by freelancer address
+ *
+ * TODO (contributor — medium, Issue #23):
+ * 1. Parse and validate query params
+ * 2. Build Prisma query with filters and pagination
+ * 3. Return { data: EscrowSummary[], total: number, page: number, limit: number }
+ */
+const listEscrows = async (req, res) => {
+  try {
+    // TODO: implement
+    res.status(501).json({ error: "Not implemented — see Issue #23" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * GET /api/escrows/:id
+ *
+ * Returns full escrow details including milestone list.
+ *
+ * @param {import('express').Request}  req
+ * @param {import('express').Response} res
+ *
+ * TODO (contributor — medium, Issue #23):
+ * 1. Parse `req.params.id` as integer
+ * 2. Query escrow + milestones from DB
+ * 3. Return 404 if not found
+ * 4. Return full EscrowDetail object
+ */
+const getEscrow = async (req, res) => {
+  try {
+    const { id } = req.params;
+    // TODO: implement
+    res.status(501).json({ error: "Not implemented — see Issue #23", id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * POST /api/escrows/broadcast
+ *
+ * Broadcasts a pre-signed Stellar transaction XDR to the network.
+ * Used for create_escrow, approve_milestone, etc.
+ *
+ * @param {import('express').Request}  req
+ * @param {import('express').Response} res
+ *
+ * Body: { signedXdr: string }
+ *
+ * TODO (contributor — hard, Issue #20):
+ * 1. Validate signedXdr is a valid base64 XDR string
+ * 2. Submit to Stellar via StellarSdk.Server.submitTransaction()
+ * 3. Wait for confirmation
+ * 4. Parse resulting transaction to extract contract events
+ * 5. Update DB optimistically (or let indexer handle it)
+ * 6. Return { success: true, hash: string }
+ */
+const broadcastCreateEscrow = async (req, res) => {
+  try {
+    const { signedXdr } = req.body;
+    // TODO: implement
+    res.status(501).json({ error: "Not implemented — see Issue #20" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * GET /api/escrows/:id/milestones
+ * TODO (contributor — easy, Issue #23): query milestones for escrow
+ */
+const getMilestones = async (req, res) => {
+  try {
+    res.status(501).json({ error: "Not implemented — see Issue #23" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+/**
+ * GET /api/escrows/:id/milestones/:milestoneId
+ * TODO (contributor — easy, Issue #23)
+ */
+const getMilestone = async (req, res) => {
+  try {
+    res.status(501).json({ error: "Not implemented — see Issue #23" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = {
+  listEscrows,
+  getEscrow,
+  broadcastCreateEscrow,
+  getMilestones,
+  getMilestone,
+};

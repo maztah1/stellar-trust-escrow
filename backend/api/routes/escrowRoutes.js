@@ -1,0 +1,50 @@
+/**
+ * Escrow API Routes
+ *
+ * All REST endpoints for querying and submitting escrow data.
+ * Write operations (create, approve, etc.) accept pre-signed Stellar
+ * transactions from the frontend — the backend only broadcasts them.
+ */
+
+const express = require("express");
+const router = express.Router();
+const escrowController = require("../controllers/escrowController");
+
+// TODO (contributor — easy, Issue #19): Add input validation middleware
+// const { validateEscrowId, validatePagination } = require('../middleware/validators');
+
+/**
+ * @route  GET /api/escrows
+ * @desc   List all escrows, paginated. Supports filtering by status and address.
+ * @query  page, limit, status, client, freelancer
+ */
+router.get("/", escrowController.listEscrows);
+
+/**
+ * @route  GET /api/escrows/:id
+ * @desc   Get full details for a single escrow including milestones.
+ * @param  id — escrow_id from the contract
+ */
+router.get("/:id", escrowController.getEscrow);
+
+/**
+ * @route  POST /api/escrows/broadcast
+ * @desc   Broadcast a pre-signed create_escrow transaction to the Stellar network.
+ * @body   { signedXdr: string }
+ * TODO (contributor — medium, Issue #20): Implement transaction broadcast + DB sync
+ */
+router.post("/broadcast", escrowController.broadcastCreateEscrow);
+
+/**
+ * @route  GET /api/escrows/:id/milestones
+ * @desc   List all milestones for an escrow.
+ */
+router.get("/:id/milestones", escrowController.getMilestones);
+
+/**
+ * @route  GET /api/escrows/:id/milestones/:milestoneId
+ * @desc   Get a single milestone.
+ */
+router.get("/:id/milestones/:milestoneId", escrowController.getMilestone);
+
+module.exports = router;

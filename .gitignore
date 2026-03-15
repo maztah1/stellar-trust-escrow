@@ -1,0 +1,43 @@
+# Rust / Cargo
+target/
+Cargo.lock
+*.wasm
+
+# Node.js
+node_modules/
+npm-debug.log*
+.npm
+
+# Next.js
+.next/
+out/
+
+# Environment files — never commit secrets
+.env
+.env.local
+.env.production
+.env.development
+backend/.env
+frontend/.env.local
+
+# Prisma
+backend/database/migrations/*.sql
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+
+# IDE
+.vscode/settings.json
+.idea/
+*.iml
+
+# Logs
+logs/
+*.log
+
+# Test coverage
+coverage/
+
+/ISSUES.md

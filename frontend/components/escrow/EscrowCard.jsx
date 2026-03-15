@@ -1,0 +1,95 @@
+/**
+ * EscrowCard Component
+ *
+ * Summary card shown in list views (Dashboard, Explorer).
+ * Links to the full Escrow Details page.
+ *
+ * @param {object} props
+ * @param {object} props.escrow
+ * @param {number}  props.escrow.id
+ * @param {string}  props.escrow.title
+ * @param {string}  props.escrow.status         — EscrowStatus
+ * @param {string}  props.escrow.totalAmount
+ * @param {string}  props.escrow.milestoneProgress  — e.g. "2 / 4"
+ * @param {string}  props.escrow.counterparty    — truncated address
+ * @param {'client'|'freelancer'} props.escrow.role
+ *
+ * TODO (contributor — easy, Issue #39):
+ * - Add hover animation (subtle lift)
+ * - Show milestone progress bar (filled segments)
+ * - Show time remaining if deadline is set
+ * - Add "disputed" warning banner if status === Disputed
+ */
+
+import Link from "next/link";
+import Badge from "../ui/Badge";
+
+export default function EscrowCard({ escrow }) {
+  const {
+    id,
+    title,
+    status,
+    totalAmount,
+    milestoneProgress,
+    counterparty,
+    role,
+  } = escrow;
+
+  const [done, total] = milestoneProgress?.split(" / ").map(Number) ?? [0, 0];
+  const progressPct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  return (
+    <Link
+      href={`/escrow/${id}`}
+      className="card block hover:border-gray-700 transition-colors group"
+    >
+      {/* Header Row */}
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-white font-semibold truncate group-hover:text-indigo-400 transition-colors">
+            {title}
+          </h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {role === "client" ? "Freelancer:" : "Client:"}{" "}
+            <span className="font-mono">{counterparty}</span>
+          </p>
+        </div>
+        <Badge status={status} size="sm" />
+      </div>
+
+      {/* Amount */}
+      <p className="text-lg font-bold text-white mb-3">{totalAmount}</p>
+
+      {/* Milestone Progress Bar */}
+      {/*
+        TODO (contributor — Issue #39):
+        Replace this simple bar with individual milestone status dots
+        (one circle per milestone, colored by MilestoneStatus)
+      */}
+      <div>
+        <div className="flex justify-between text-xs text-gray-500 mb-1">
+          <span>Milestones</span>
+          <span>{milestoneProgress}</span>
+        </div>
+        <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-indigo-500 rounded-full transition-all"
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-800">
+        <span className="text-xs text-gray-600">#{id}</span>
+        <span
+          className={`text-xs font-medium ${
+            role === "client" ? "text-blue-400" : "text-emerald-400"
+          }`}
+        >
+          You are {role}
+        </span>
+      </div>
+    </Link>
+  );
+}
