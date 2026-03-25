@@ -33,17 +33,18 @@ mod errors;
 mod events;
 mod types;
 mod upgrade_tests;
+mod pause_tests;
+
 
 pub use errors::EscrowError;
 pub use types::{DataKey, EscrowState, EscrowStatus, Milestone, MilestoneStatus, ReputationRecord};
 use types::{CancellationRequest, SlashRecord};
 
 use soroban_sdk::{
-    contract, contractimpl, contracttype, crypto, token, Address, BytesN, Env, String, Vec,
+    contract, contractimpl, contracttype, token, Address, BytesN, Env, String, Vec,
 };
 
 // ── TTL constants ─────────────────────────────────────────────────────────────
-// Bump only when remaining TTL falls below threshold, extending to target.
 const INSTANCE_TTL_THRESHOLD: u32 = 5_000;
 const INSTANCE_TTL_EXTEND_TO: u32 = 50_000;
 const PERSISTENT_TTL_THRESHOLD: u32 = 5_000;
@@ -353,6 +354,24 @@ impl ContractStorage {
         }
         Ok(())
     }
+
+    // ── Pause helpers ──────────────────────────────────────────────────────────
+
+    fn is_paused(env: &Env) -> bool {
+        env.storage().instance().get(&DataKey::Paused).unwrap_or(false)
+    }
+
+    fn set_paused(env: &Env, paused: bool) {
+        env.storage().instance().set(&DataKey::Paused, &paused);
+        Self::bump_instance_ttl(env);
+    }
+
+    fn require_not_paused(env: &Env) -> Result<(), EscrowError> {
+        if Self::is_paused(env) {
+            return Err(EscrowError::ContractPaused);
+        }
+        Ok(())
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -392,6 +411,7 @@ impl EscrowContract {
         // Auth + validation before any storage I/O
         client.require_auth();
         ContractStorage::require_initialized(&env)?;
+        ContractStorage::require_not_paused(&env)?;
 
         if total_amount <= 0 {
             return Err(EscrowError::InvalidEscrowAmount);
@@ -460,6 +480,7 @@ impl EscrowContract {
         amount: i128,
     ) -> Result<u32, EscrowError> {
         caller.require_auth();
+        ContractStorage::require_not_paused(&env)?;
 
         if amount <= 0 {
             return Err(EscrowError::InvalidMilestoneAmount);
@@ -893,6 +914,41 @@ impl EscrowContract {
         Ok(())
     }
 
+    // ── Emergency Pause ──────────────────────────────────────────────────────
+
+    /// Pauses the contract, preventing new escrows and milestone additions.
+    pub fn pause(env: Env, caller: Address) -> Result<(), EscrowError> {
+        caller.require_auth();
+        ContractStorage::require_admin(&env, &caller)?;
+
+        if ContractStorage::is_paused(&env) {
+            return Ok(());
+        }
+
+        ContractStorage::set_paused(&env, true);
+        events::emit_contract_paused(&env, &caller);
+        Ok(())
+    }
+
+    /// Unpauses the contract, resuming normal operation.
+    pub fn unpause(env: Env, caller: Address) -> Result<(), EscrowError> {
+        caller.require_auth();
+        ContractStorage::require_admin(&env, &caller)?;
+
+        if !ContractStorage::is_paused(&env) {
+            return Ok(());
+        }
+
+        ContractStorage::set_paused(&env, false);
+        events::emit_contract_unpaused(&env, &caller);
+        Ok(())
+    }
+
+    /// Returns the current pause state of the contract.
+    pub fn is_paused(env: Env) -> bool {
+        ContractStorage::is_paused(&env)
+    }
+
     // ── View Functions ────────────────────────────────────────────────────────
 
     pub fn get_escrow(env: Env, escrow_id: u64) -> Result<EscrowState, EscrowError> {
@@ -949,7 +1005,7 @@ impl EscrowContract {
 
         // Check if escrow is in a cancellable state
         if !matches!(meta.status, EscrowStatus::Active) {
-            return Err(EscrowError::InvalidEscrowState);
+            return Err(EscrowError::EscrowNotActive);
         }
 
         // Check if cancellation already exists
@@ -1159,7 +1215,7 @@ impl EscrowContract {
 
         if upheld {
             // Slash is upheld - no changes needed
-            events::emit_slash_dispute_resolved(&env, escrow_id, true, slash_record.amount);
+            events::emit_dispute_resolved(&env, escrow_id, slash_record.amount, 0);
         } else {
             // Reverse the slash - return funds to slashed user
             token.transfer(
@@ -1175,7 +1231,7 @@ impl EscrowContract {
             reputation.total_score += 10; // Restore 10 points
             ContractStorage::save_reputation(&env, &reputation);
 
-            events::emit_slash_dispute_resolved(&env, escrow_id, false, 0);
+            events::emit_dispute_resolved(&env, escrow_id, 0, 0);
         }
 
         // Clean up slash record
